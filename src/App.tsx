@@ -3,8 +3,233 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { motion } from "motion/react";
-import { MapPin, Music, Utensils, Users, Heart, Instagram, Facebook, Phone } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { MapPin, Music, Utensils, Users, Heart, Instagram, Facebook, Phone, Calendar, Clock, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { useState, useMemo, FormEvent } from "react";
+
+const BookingModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [step, setStep] = useState(1);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [guests, setGuests] = useState(2);
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const timeSlots = useMemo(() => {
+    if (!date) return [];
+    const day = new Date(date).getDay(); // 0 is Sunday, 1 is Monday...
+    
+    // Mon-Thu: 19:00 - 00:00
+    // Fri-Sat: 19:00 - 01:30
+    // Sun: 12:30 - 15:00 | 19:00 - 00:00
+    
+    const slots = [];
+    if (day === 0) { // Sunday
+      slots.push("12:30", "13:00", "13:30", "14:00", "14:30");
+    }
+    
+    slots.push("19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00");
+    
+    if (day === 5 || day === 6) { // Fri-Sat
+      slots.push("23:30", "00:00", "00:30");
+    }
+    
+    return slots;
+  }, [date]);
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    }, 1500);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-tavern-brown/60 backdrop-blur-sm"
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative bg-tavern-cream w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden border border-tavern-gold/20"
+        >
+          {/* Header */}
+          <div className="p-6 border-b border-tavern-gold/10 flex items-center justify-between bg-white">
+            <h3 className="text-2xl font-serif font-bold text-tavern-brown">Prenota un Tavolo</h3>
+            <button onClick={onClose} className="p-2 hover:bg-tavern-gold/10 rounded-full transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-8">
+            {isSuccess ? (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12"
+              >
+                <div className="w-20 h-20 bg-tavern-gold/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Heart className="text-tavern-gold w-10 h-10" />
+                </div>
+                <h4 className="text-3xl font-serif font-bold mb-4">Prenotazione Inviata!</h4>
+                <p className="text-tavern-brown/70 mb-8">Grazie {name}, ti abbiamo inviato una conferma. Ti aspettiamo alla Taverna!</p>
+                <button 
+                  onClick={onClose}
+                  className="w-full bg-tavern-brown text-tavern-cream py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all"
+                >
+                  Chiudi
+                </button>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {step === 1 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-tavern-gold flex items-center gap-2">
+                        <Calendar size={14} /> Data della visita
+                      </label>
+                      <input 
+                        type="date" 
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full bg-white border border-tavern-gold/20 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-tavern-gold/50 transition-all font-sans"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-tavern-gold flex items-center gap-2">
+                        <Clock size={14} /> Orario disponibile
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
+                        {date ? (
+                          timeSlots.map((slot) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => setTime(slot)}
+                              className={`p-3 rounded-xl text-sm font-medium transition-all border ${
+                                time === slot 
+                                  ? "bg-tavern-gold text-white border-tavern-gold shadow-md" 
+                                  : "bg-white border-tavern-gold/10 hover:border-tavern-gold/40"
+                              }`}
+                            >
+                              {slot}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="col-span-3 text-sm text-tavern-brown/40 italic text-center py-4">Seleziona prima una data</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-tavern-gold flex items-center gap-2">
+                        <Users size={14} /> Numero di persone
+                      </label>
+                      <div className="flex items-center justify-between bg-white border border-tavern-gold/20 p-2 rounded-2xl">
+                        <button 
+                          type="button"
+                          onClick={() => setGuests(Math.max(1, guests - 1))}
+                          className="w-12 h-12 flex items-center justify-center hover:bg-tavern-gold/10 rounded-xl transition-colors"
+                        >
+                          -
+                        </button>
+                        <span className="text-xl font-bold">{guests}</span>
+                        <button 
+                          type="button"
+                          onClick={() => setGuests(guests + 1)}
+                          className="w-12 h-12 flex items-center justify-center hover:bg-tavern-gold/10 rounded-xl transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button"
+                      disabled={!date || !time}
+                      onClick={() => setStep(2)}
+                      className="w-full bg-tavern-brown text-tavern-cream py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      Continua <ChevronRight size={18} />
+                    </button>
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-tavern-gold">Nome e Cognome</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="Es. Mario Rossi"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-white border border-tavern-gold/20 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-tavern-gold/50 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-tavern-gold">Telefono o Email</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="Per la conferma"
+                        value={contact}
+                        onChange={(e) => setContact(e.target.value)}
+                        className="w-full bg-white border border-tavern-gold/20 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-tavern-gold/50 transition-all"
+                      />
+                    </div>
+
+                    <div className="bg-tavern-gold/5 p-4 rounded-2xl border border-tavern-gold/10 text-sm">
+                      <p className="flex justify-between mb-1"><span>Data:</span> <span className="font-bold">{new Date(date).toLocaleDateString('it-IT')}</span></p>
+                      <p className="flex justify-between mb-1"><span>Orario:</span> <span className="font-bold">{time}</span></p>
+                      <p className="flex justify-between"><span>Persone:</span> <span className="font-bold">{guests}</span></p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button 
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className="flex-1 border border-tavern-gold/30 text-tavern-brown py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-tavern-gold/10 transition-all flex items-center justify-center gap-2"
+                      >
+                        <ChevronLeft size={18} /> Indietro
+                      </button>
+                      <button 
+                        type="submit"
+                        disabled={isSubmitting || !name || !contact}
+                        className="flex-[2] bg-tavern-brown text-tavern-cream py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isSubmitting ? "Invio in corso..." : "Conferma Prenotazione"}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </form>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
 
 const TeamMember = ({ name, role, description, imageUrl }: { name: string; role: string; description?: string; imageUrl?: string }) => (
   <motion.div 
@@ -49,8 +274,11 @@ const Mascot = ({ name, type, icon: Icon }: { name: string; type: string; icon: 
 );
 
 export default function App() {
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
   return (
     <div className="min-h-screen selection:bg-tavern-gold selection:text-white">
+      <BookingModal isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-tavern-cream/80 backdrop-blur-md border-b border-tavern-gold/10">
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -62,7 +290,10 @@ export default function App() {
             <a href="#mascotte" className="hover:text-tavern-gold transition-colors">Mascotte</a>
             <a href="#contatti" className="hover:text-tavern-gold transition-colors">Contatti</a>
           </div>
-          <button className="bg-tavern-brown text-tavern-cream px-6 py-2 rounded-full text-sm font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all shadow-lg">
+          <button 
+            onClick={() => setIsBookingOpen(true)}
+            className="bg-tavern-brown text-tavern-cream px-6 py-2 rounded-full text-sm font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all shadow-lg"
+          >
             Prenota
           </button>
         </div>
@@ -97,6 +328,12 @@ export default function App() {
               Benvenuti alla Taverna di Fred. Un luogo dove la tradizione culinaria incontra la buona musica e l'accoglienza più sincera.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button 
+                onClick={() => setIsBookingOpen(true)}
+                className="bg-tavern-brown text-tavern-cream px-10 py-4 rounded-full text-lg font-bold uppercase tracking-widest hover:bg-tavern-gold transition-all shadow-xl"
+              >
+                Prenota un Tavolo
+              </button>
               <a href="#chi-siamo" className="flex items-center gap-2 text-tavern-brown font-bold border-b-2 border-tavern-gold pb-1 hover:text-tavern-gold transition-all">
                 Scopri la nostra storia <Utensils size={18} />
               </a>
